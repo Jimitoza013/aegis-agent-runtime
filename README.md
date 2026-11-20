@@ -43,3 +43,7 @@ No provider key is needed for Milestone 0. API and worker processes are implemen
 7. Production hardening and evaluation.
 
 Never commit `.env` or credentials. Do not connect this scaffold to production infrastructure.
+
+# aegis-agent-runtime
+Autonomous AI Agent Runtime — Python, LangGraph, Temporal and MCP
+ 40b2b059fe6cdb875699ff5e16082987609870ec
