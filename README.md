@@ -105,11 +105,37 @@ Aegis separates agent reasoning, orchestration, model access, tool integration, 
 
 **Memory architecture principle:** Persistent memory stores information intended to be reused across tasks. LangGraph checkpointing stores execution state required to resume workflows. These responsibilities remain separate.
 
+
+### Milestone 6 — Multi-agent coordination
+
+- Trusted agent definitions and registration.
+- In-memory agent registry with unique agent identifiers.
+- Capability-based agent discovery.
+- Agent enablement and availability checks.
+- Validated task delegation and assignment contracts.
+- Tenant and principal identity propagation across assignments.
+- Deterministic coordinator for selecting eligible agents.
+- Explicit handling of ambiguous agent selection.
+- Trusted agent execution handler registry.
+- Asynchronous agent execution service.
+- Structured agent execution results with status validation.
+- Assignment and agent identity verification for execution results.
+- Temporal multi-agent workflow for durable orchestration.
+- Dedicated Temporal Activity for multi-agent execution.
+- JSON-compatible Temporal input and output contracts.
+- Configurable worker registration for multi-agent workflows.
+- Dedicated unit and Temporal integration tests.
+
+**Multi-agent architecture principle:** The coordinator selects agents and delegates assignments. Agent capabilities describe supported task categories; they do not grant tool permissions. Tool execution must continue through the existing MCP authorization layer and trusted security policies.
+
+**Execution boundary:** Agent registration and execution handlers are separate responsibilities. Multi-agent execution requires explicitly registered trusted handlers. The initial registry is in-memory and is not yet distributed or persistent.
+
+
+
 ## Planned milestones
 
-6. Multi-agent coordination.
-
 7. Production hardening, observability and evaluation.
+
 
 ## Technology stack
 
@@ -278,11 +304,31 @@ Run semantic retrieval integration tests:
 uv run pytest tests/integration/test_memory_retrieval.py -v
 ```
 
+
+Run coordination unit tests:
+
+```bash
+uv run pytest tests/unit -k coordination -v
+```
+
+Run multi-agent Activity tests:
+
+```bash
+uv run pytest tests/unit/test_multi_agent_activities.py -v
+```
+
+Run multi-agent Temporal integration tests:
+
+```bash
+uv run pytest tests/integration/test_multi_agent_temporal_workflows.py -v
+```
+
+
 Database integration tests require the PostgreSQL service to be running and the schema migrations to be applied.
 
 Embedding adapter tests use mocked provider responses and do not require paid model API calls.
 
-**Latest verification:** 199 tests passed. Ruff lint and formatting checks passed.
+**Latest verification:** 250 tests passed. Ruff lint and formatting checks passed.
 
 ## Project structure
 
