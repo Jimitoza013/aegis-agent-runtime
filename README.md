@@ -1,25 +1,25 @@
-
 # Aegis Agent Runtime
 
-A model-independent autonomous AI agent runtime built with Python, LangGraph, Temporal, LiteLLM and the Model Context Protocol (MCP).
+A model-independent autonomous AI agent runtime built with Python, LangGraph, Temporal, LiteLLM, PostgreSQL and the Model Context Protocol (MCP).
 
-Aegis provides the foundational architecture for building secure, durable and extensible AI agents with controlled tool execution.
+Aegis provides the foundational architecture for building secure, durable and extensible AI agents with controlled tool execution and persistent memory.
 
-**Current progress:** Milestones 0–4 implemented. Persistent memory, multi-agent coordination and production hardening are planned.
+**Current progress:** Milestones 0–5 implemented. Multi-agent coordination and production hardening are planned.
 
 ## Architecture
 
-Aegis separates agent reasoning, orchestration, model access, tool integration and authorization into independent components.
+Aegis separates agent reasoning, orchestration, model access, tool integration, authorization and persistent memory into independent components.
 
 | Component | Responsibility |
 |---|---|
-| LiteLLM | Model provider integration |
+| LiteLLM | Model and embedding provider integration |
 | Provider abstraction | Model-independent request and response contracts |
 | LangGraph | Agent state transitions, planning and bounded reasoning |
 | Temporal | Durable task execution, retries, timeouts and workflow recovery |
 | MCP | External tool and context interoperability |
 | Policy engine | Independent authorization of tool actions |
-| PostgreSQL | Application data persistence |
+| PostgreSQL | Application data and persistent memory storage |
+| pgvector | Vector storage and semantic similarity retrieval |
 | Redis | Ephemeral data and caching |
 
 ## Architecture rules
@@ -29,7 +29,9 @@ Aegis separates agent reasoning, orchestration, model access, tool integration a
 - External I/O must not execute inside deterministic Temporal Workflow code. Use Activities.
 - MCP is an interoperability protocol, not an authorization boundary.
 - Deterministic policy code authorizes actions independently of model output.
-- PostgreSQL is the application source of truth; LangGraph checkpoints are stored separately.
+- PostgreSQL is the application source of truth; LangGraph checkpoints and persistent memory are separate systems.
+- Persistent memories are scoped by tenant and principal.
+- Memory retrieval must enforce ownership boundaries and expiration rules.
 - Side-effecting operations require idempotency controls.
 - Secrets and credentials must never be hard-coded or committed.
 
@@ -83,22 +85,45 @@ Aegis separates agent reasoning, orchestration, model access, tool integration a
 
 **Security principle:** Discovering an MCP tool does not automatically authorize its execution. A trusted local policy must authorize the requested action.
 
+### Milestone 5 — Persistent memory and semantic retrieval
+
+- PostgreSQL-backed persistent memory storage.
+- SQLAlchemy asynchronous database foundation.
+- Alembic database migrations.
+- pgvector extension and vector storage.
+- Tenant and principal ownership scopes.
+- Validated memory schemas and memory categories.
+- Memory repository for creating, retrieving, listing and deleting records.
+- Expiration-aware memory management and cleanup.
+- Provider-independent embedding abstraction.
+- LiteLLM embedding provider adapter.
+- Vector similarity search using cosine distance.
+- Memory type filtering and configurable result limits.
+- Semantic retrieval with tenant and principal isolation.
+- Memory service coordinating embedding generation, persistence and retrieval.
+- Unit and PostgreSQL integration tests.
+
+**Memory architecture principle:** Persistent memory stores information intended to be reused across tasks. LangGraph checkpointing stores execution state required to resume workflows. These responsibilities remain separate.
+
 ## Planned milestones
 
-5. Persistent memory and retrieval.
 6. Multi-agent coordination.
+
 7. Production hardening, observability and evaluation.
 
 ## Technology stack
 
 - Python 3.12+
 - Pydantic
+- SQLAlchemy
+- Alembic
 - LiteLLM
 - LangGraph
 - Temporal
 - Model Context Protocol (MCP)
 - FastAPI
 - PostgreSQL
+- pgvector
 - Redis
 - pytest
 - Ruff
@@ -108,7 +133,7 @@ Aegis separates agent reasoning, orchestration, model access, tool integration a
 
 - Python 3.12+
 - `uv`
-- Docker
+- Docker Desktop or Docker Engine
 - Docker Compose
 - Temporal CLI
 
@@ -133,13 +158,21 @@ Create the local environment file:
 cp .env.example .env
 ```
 
+Configure any required provider credentials in `.env`. Never commit this file.
+
 Start PostgreSQL and Redis:
 
 ```bash
 docker compose up -d postgres redis
 ```
 
-Start a local Temporal development server in another terminal:
+Apply database migrations:
+
+```bash
+uv run alembic upgrade head
+```
+
+Start a local Temporal development server when running Temporal workflows:
 
 ```bash
 temporal server start-dev
@@ -163,6 +196,30 @@ Verify formatting:
 uv run ruff format --check .
 ```
 
+## Database migrations
+
+Aegis uses Alembic for database schema management.
+
+Apply all migrations:
+
+```bash
+uv run alembic upgrade head
+```
+
+Check the current migration revision:
+
+```bash
+uv run alembic current
+```
+
+Generate a migration after changing database models:
+
+```bash
+uv run alembic revision --autogenerate -m "describe schema change"
+```
+
+Review generated migrations before applying them.
+
 ## Testing
 
 The project uses pytest for unit and integration testing.
@@ -185,19 +242,64 @@ Run MCP unit tests:
 uv run pytest tests/unit -k mcp -v
 ```
 
-Integration tests include a local MCP server process communicating over stdio. They do not require a paid model API.
+Run memory schema tests:
+
+```bash
+uv run pytest tests/unit/test_memory_schemas.py -v
+```
+
+Run memory embedding tests:
+
+```bash
+uv run pytest tests/unit/test_memory_embeddings.py -v
+```
+
+Run LiteLLM embedding adapter tests:
+
+```bash
+uv run pytest tests/unit/test_litellm_embeddings.py -v
+```
+
+Run memory service tests:
+
+```bash
+uv run pytest tests/unit/test_memory_service.py -v
+```
+
+Run memory repository integration tests:
+
+```bash
+uv run pytest tests/integration/test_memory_repository.py -v
+```
+
+Run semantic retrieval integration tests:
+
+```bash
+uv run pytest tests/integration/test_memory_retrieval.py -v
+```
+
+Database integration tests require the PostgreSQL service to be running and the schema migrations to be applied.
+
+Embedding adapter tests use mocked provider responses and do not require paid model API calls.
+
+**Latest verification:** 199 tests passed. Ruff lint and formatting checks passed.
 
 ## Project structure
 
 ```text
 aegis-agent-runtime/
 ├── docs/
+├── migrations/
+│   └── versions/
 ├── src/
 │   └── aegis/
 │       ├── agent/
 │       ├── core/
+│       ├── database/
+│       │   └── models/
 │       ├── domain/
 │       ├── mcp/
+│       ├── memory/
 │       ├── orchestration/
 │       ├── providers/
 │       └── security/
@@ -206,6 +308,7 @@ aegis-agent-runtime/
 │   └── unit/
 ├── .env.example
 ├── .gitignore
+├── alembic.ini
 ├── docker-compose.yml
 ├── pyproject.toml
 └── README.md
@@ -217,6 +320,7 @@ aegis-agent-runtime/
 - Deny actions without an explicit trusted policy.
 - Never treat model output or MCP metadata as authorization.
 - Validate tool requests before execution.
+- Enforce tenant and principal ownership when accessing persistent memories.
 - Avoid exposing internal exception details to external callers.
 - Keep credentials in environment variables.
 - Do not connect unfinished components to production infrastructure.
@@ -229,6 +333,7 @@ aegis-agent-runtime/
 - Preserve existing working functionality.
 - Include tests for new functionality.
 - Document architectural decisions and meaningful changes.
+- Use meaningful Git commits.
 
 ## License
 

@@ -9,7 +9,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_DATABASE_URL = "postgresql+asyncpg://aegis:aegis_dev_only@localhost:5432/aegis"
+DEFAULT_DATABASE_URL = "postgresql+asyncpg://aegis:aegis_dev_only@localhost:5433/aegis"
 
 
 class Settings(BaseSettings):
